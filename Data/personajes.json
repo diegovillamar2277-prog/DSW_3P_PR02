@@ -1,0 +1,12 @@
+[
+  {
+    "Id": 1,
+    "Nombre": "Link",
+    "Videojuego": "Zelda",
+    "Clase": "Guerrero",
+    "Nivel": 50,
+    "Poder": 90,
+    "Disponible": true,
+    "ImagenUrl": "https://example.com/link.png"
+  }
+]
