@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using DSW_3P_PR02.Data;
 using DSW_3P_PR02.Filters;
 using DSW_3P_PR02.Repositories;
@@ -9,7 +10,22 @@ using DSW_3P_PR02.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers(options => options.Filters.Add<BusinessExceptionFilter>());
-builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Boton Authorize en Swagger UI para probar con el token JWT
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Pega el access_token obtenido en /api/auth/login"
+    });
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
 
 // Controller -> IService -> IRepository -> SQL Server (EF Core)
 builder.Services.AddScoped<IPersonajeRepository, PersonajeSqlRepository>();
@@ -47,14 +63,22 @@ builder.Services
    });
 builder.Services.AddAuthorization();
 
+// CORS: los origenes permitidos (cliente de evaluacion del docente) se leen de Cors:Origins.
+// UseCors debe ir antes de autenticacion/autorizacion para que el preflight (OPTIONS, sin token)
+// no sea rechazado con 401.
+builder.Services.AddCors(options => options.AddPolicy("Frontend", policy => policy
+    .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
+    .AllowAnyHeader()   // permite Content-Type y Authorization (el token Bearer)
+    .AllowAnyMethod())); // permite GET, POST, PUT, DELETE y OPTIONS
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
